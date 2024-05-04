@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'XH_Forum_webapp',
     'corsheaders',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -107,7 +108,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('localhost', 6379)],  # Redis 服务器的主机和端口
+        },
+    },
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
@@ -133,3 +141,4 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES=[os.path.join(BASE_DIR,'C:\\Users\\29284\\Desktop\\XHforum\\XH_Forum_Django\\frontend\\dist\\static')]
+ASGI_APPLICATION = "XH_Forum_Django.asgi.application"

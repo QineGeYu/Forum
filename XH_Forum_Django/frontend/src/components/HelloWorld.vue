@@ -21,7 +21,7 @@
       <el-menu-item index="2-4-3">选项3</el-menu-item>
     </el-submenu>
   </el-submenu>
-  <el-menu-item index="3">消息中心</el-menu-item>
+  <el-menu-item index="3" @click="redirectToMessageCentre">消息中心</el-menu-item>
   <el-menu-item index="4" @click="redirectToUserPage"> 个人主页 </el-menu-item>
   <el-avatar class="profile user pull-right" >{{ user }}</el-avatar>
     <div class="search-container">
@@ -40,13 +40,20 @@
   <el-timeline class="card-line">
     <el-timeline-item v-for="item in displayData" :key="item.id" :timestamp="item.created_at" placement="top">
       <el-card class="card">
-        <el-avatar class="profile author"> {{ item.author_id }} </el-avatar>
+        <!-- <el-avatar class="profile author" @click="goToUserPage(item.author_id)"> {{ item.author_id }} </el-avatar> -->
+          <div class="avatar-wrapper" @click="goToUserPage(item.author_id)">
+             <el-avatar class="profile author">{{ item.author_id }}</el-avatar>
+          </div>
         <h4 class="card-title">标题:{{ item.title }}</h4>
         <p class="card-description">摘要:  {{ item.description }}</p>
           <div class="like-section">
            <el-button v-if="!isSearching" @click="likePost(item)">
             <i class="el-icon-magic-stick"></i>  赞
             <span class="like-count">{{ item.likeCount }}</span>
+            </el-button>
+            <el-button @click="goToPostDetail(item)">
+            <i class="el-icon-chat-line-round"></i>  评论
+            <span class="like-count">{{ item.comments }}</span>
             </el-button>
         </div>
       </el-card>
@@ -91,6 +98,7 @@ export default{
       console.log(key, keyPath)
     },
     likePost (item) {
+      console.log(item.id)
       this.$axios.post('like_post/', {
         postId: item.id
       })
@@ -100,7 +108,10 @@ export default{
         .catch(error => {
           console.error('点赞失败:', error)
         })
+    },
+    goToPostDetail (item) {
       console.log(item.id)
+      this.$router.push({ name: 'PostDetail', params: { postId: item.id } })
     },
     getPost () {
       this.$axios.get('show_post/')
@@ -116,9 +127,20 @@ export default{
           })
         })
     },
+    goToUserPage (authorId) {
+      // 在当前网页中进行导航，并传递 authorId 参数
+      this.$router.push({
+        path: '/UserPage', query: { authorId: authorId }
+      })
+    },
     redirectToUserPage () {
       this.$router.push({
         path: '/usermessage'
+      })
+    },
+    redirectToMessageCentre () {
+      this.$router.push({
+        path: '/MessageCentre'
       })
     },
     performSearch () {
@@ -188,5 +210,8 @@ export default{
 }
 .search-container {
   width: 300px; /* 设置容器宽度 */
+}
+.avatar-wrapper {
+  cursor: pointer;
 }
 </style>

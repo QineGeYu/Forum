@@ -8,48 +8,15 @@
   background-color="#545c64"
   text-color="#fff"
   active-text-color="#ffd04b">
-  <el-menu-item index="1" @click="redirectTofirstPage">首页</el-menu-item>
-  <el-submenu index="2">
-    <template slot="title">板块分类</template>
-    <el-menu-item index="2-1">选项1</el-menu-item>
-    <el-menu-item index="2-2">选项2</el-menu-item>
-    <el-menu-item index="2-3">选项3</el-menu-item>
-    <el-submenu index="2-4">
-      <template slot="title">选项4</template>
-      <el-menu-item index="2-4-1">选项1</el-menu-item>
-      <el-menu-item index="2-4-2">选项2</el-menu-item>
-      <el-menu-item index="2-4-3">选项3</el-menu-item>
-    </el-submenu>
-  </el-submenu>
-  <el-menu-item index="3" @click="redirectToMessageCentre">消息中心</el-menu-item>
-  <el-menu-item index="4" @click="redirectToUserPage"> 个人主页 </el-menu-item>
+  <el-menu-item index="1">{{ user }}的主页</el-menu-item>
   <el-avatar class="profile user pull-right" >{{ user }}</el-avatar>
 </el-menu>
+  <div class="button-container">
+  <el-button class="custom-button" icon="el-icon-message" @click="chat">私信</el-button>
+  </div>
   <div class="descriptions-container">
   <el-descriptions class="margin-top" title="个人信息" :column="3" border size="medium">
-   <template slot="extra">
 
-   <el-button type="primary" @click="dialogFormVisible = true">发布</el-button>
-<el-dialog title="发布帖子" :visible.sync="dialogFormVisible">
-  <el-form :model="form">
-
-        <el-form-item label="标题">
-          <el-input v-model="title"></el-input>
-        </el-form-item>
-        <el-form-item label="摘要">
-          <el-input v-model="description"></el-input>
-        </el-form-item>
-        <el-form-item label="内容">
-          <el-input type="textarea" v-model="content"></el-input>
-        </el-form-item>
-
-  </el-form>
-  <div slot="footer" class="dialog-footer">
-    <el-button @click="dialogFormVisible = false">取 消</el-button>
-    <el-button type="primary" @click="publishPost">确 定</el-button>
-  </div>
-</el-dialog>
-</template>
     <el-descriptions-item>
       <template slot="label">
         <i class="el-icon-user"></i>
@@ -79,6 +46,7 @@
     </el-descriptions-item>
   </el-descriptions>
   </div>
+
 <div class="block">
   <el-timeline class="card-line">
     <el-timeline-item v-for="item in cards" :key="item.id" :timestamp="item.created_at" placement="top">
@@ -124,12 +92,22 @@ export default {
     }
   },
   mounted () {
-    this.user = sessionStorage.getItem('user').replace(/"/g, '')
+    this.user = this.$route.query.authorId
+    this.main_user = sessionStorage.getItem('user').replace(/"/g, '')
     console.log(this.user)
+    console.log(this.main_user)
     this.getPost()
     this.getUserMessage()
   },
   methods: {
+    chat () {
+      this.$axios.post('save_contact/', {
+        contacted_users: this.user
+      })
+      this.$router.push({
+        path: '/MessageCentre'
+      })
+    },
     likePost (item) {
       console.log(item.id)
       this.$axios.post('like_post/', {
@@ -149,23 +127,12 @@ export default {
     handleSelect (key, keyPath) {
       console.log(key, keyPath)
     },
-    redirectTofirstPage () {
-      this.$router.push({
-        path: '/HelloWorld'
-      })
-    },
-    redirectToUserPage () {
-      this.$router.push({
-        path: '/usermessage'
-      }) // 根据您的路由配置，将'usermessage'替换为目标页面的路由路径
-    },
-    redirectToMessageCentre () {
-      this.$router.push({
-        path: '/MessageCentre'
-      })
-    },
     getPost () {
-      this.$axios.get('show_user_post/')
+      this.$axios.get('show_user_post2/', {
+        params: {
+          username: this.user
+        }
+      })
         .then(response => {
           this.cards = JSON.parse(response.data.posts)
           console.log(this.cards)
@@ -176,7 +143,11 @@ export default {
         })
     },
     getUserMessage () {
-      this.$axios.get('show_user_message/')
+      this.$axios.get('show_user_message2/', {
+        params: {
+          username: this.user
+        }
+      })
         .then(response => {
           this.message = response.data
           console.log(this.message)
@@ -256,5 +227,14 @@ export default {
 .card-title {
   text-align: left;
 }
-
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+}
+.custom-button {
+  font-size: 18px;
+  padding: 10px 20px;
+  background-color: hsl(221, 71%, 53%);
+  color: #ffffff;
+}
 </style>
