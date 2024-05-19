@@ -50,7 +50,7 @@ export default {
           .then((response) => {
             console.log('registration successful')
             alert('注册成功！')
-            this.$router.push('/Login')
+            this.$router.push('/')
           })
           .catch(error => {
             console.log('registration failed', error)

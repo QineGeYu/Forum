@@ -23,9 +23,8 @@
   </el-submenu>
   <el-menu-item index="3">消息中心</el-menu-item>
   <el-menu-item index="4" @click="redirectToUserPage"> 个人主页 </el-menu-item>
-  <el-avatar class="profile user pull-right" >{{ user }}</el-avatar>
+  <el-avatar class="profile user pull-right" :src="avatar_url">{{ user }}</el-avatar>
 </el-menu>
-
 <el-container>
   <el-header>通讯记录</el-header>
   <el-container>
@@ -69,9 +68,7 @@
 
 </div>
 </template>
-
 <script>
-
 export default{
   data () {
     return {
@@ -85,7 +82,10 @@ export default{
       highlightedIndex: -1,
       contactUser: null,
       messages: [], // 消息列表
-      unreadContacts: [] // 未读消息的联系人索引列表
+      unreadContacts: [], // 未读消息的联系人索引列表
+      publicKey: null,
+      privateKey: null,
+      avatar_url: ''
     }
   },
   computed: {
@@ -95,10 +95,23 @@ export default{
   },
   mounted () {
     this.user = sessionStorage.getItem('user').replace(/"/g, '')
+    this.getPrivateKey()
     this.connectWebSocket()
     this.get_contacts()
+    this.getAvatar()
   },
   methods: {
+    getPrivateKey () {
+      this.$axios.post('get_server_private_key/', {
+        username: this.user
+      })
+        .then(response => {
+          this.privateKey = response.data.private
+        })
+        .catch(error => {
+          console.error(error)
+        })
+    },
     connectWebSocket () {
       const socket = new WebSocket('ws://localhost:8000/chat/')
 
@@ -110,66 +123,76 @@ export default{
       }
       socket.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data)
-          const senderId = message.sender_id
-          const messageContent = message.content
-          const existingContactIndex = this.contacts.findIndex(contact => contact.id === senderId)
+          this.$axios.post('get_server_private_key/', {
+            username: this.user
+          }).then(response => {
+            this.privateKey = response.data.private
 
-          if (existingContactIndex !== -1) {
-            // 如果发送者已存在于联系人中，则将其置顶并更新消息内容
-            const existingContact = this.contacts[existingContactIndex]
-            existingContactIndex.message = messageContent
-            this.contacts.splice(existingContactIndex, 1)
-            this.contacts.unshift(existingContact)
-            if (existingContactIndex !== this.highlightedIndex) {
-              this.unreadContacts.push(existingContactIndex)
+            const message = JSON.parse(event.data)
+            const senderId = message.sender_id
+            const encryptedData = message.content
+            const existingContactIndex = this.contacts.findIndex(contact => contact.id === senderId)
+            const jse = new this.$jsEncrypt()
+            console.log(this.privateKey)
+            jse.setPrivateKey(this.privateKey)
+            const messageContent = jse.decrypt(encryptedData)
+            console.log(messageContent)
+            if (existingContactIndex !== -1) {
+              // 如果发送者已存在于联系人中，则将其置顶并更新消息内容
+              const existingContact = this.contacts[existingContactIndex]
+              existingContactIndex.message = messageContent
+              this.contacts.splice(existingContactIndex, 1)
+              this.contacts.unshift(existingContact)
+              if (existingContactIndex !== this.highlightedIndex) {
+                this.unreadContacts.push(existingContactIndex)
+              }
+              // 将该联系人从原位置删除，并将其添加到数组的开头，以实现置顶效果
+            } else {
+              // 如果发送者不存在于联系人中，则创建一个新的联系人对象并将其置顶
+              const newContact = {
+                id: senderId,
+                message: messageContent
+              }
+              this.$axios.post('save_contact/', {
+                contacted_users: senderId
+              }).then(() => {
+                this.get_contacts()
+                this.contacts.unshift(newContact.id)
+                this.unreadContacts.push(0)
+              }).catch(error => {
+                console.error('保存联系人出错:', error)
+              })
             }
-            // 将该联系人从原位置删除，并将其添加到数组的开头，以实现置顶效果
-          } else {
-            // 如果发送者不存在于联系人中，则创建一个新的联系人对象并将其置顶
-            const newContact = {
-              id: senderId,
-              message: messageContent
+            // 创建聊天消息的容器元素
+            const chatMessageElement = document.createElement('div')
+            chatMessageElement.classList.add('chat-message')
+
+            // 创建头像元素
+            const avatarElement = document.createElement('el-avatar')
+            avatarElement.classList.add('chat-avatar')
+            avatarElement.setAttribute('size', 'small')
+            avatarElement.setAttribute('round', 'true')
+            avatarElement.innerText = message.sender_id
+
+            // 创建气泡消息元素
+
+            const cardElement = document.createElement('el-card')
+            cardElement.classList.add('chat-card')
+            cardElement.setAttribute('body-style', 'padding: 10px;')
+            cardElement.setAttribute('shadow', 'never')
+            cardElement.appendChild(document.createTextNode(messageContent))
+            chatMessageElement.appendChild(cardElement)
+            const chatContainer = document.querySelector('.chat-container')
+            if (message.sender_id === this.contactUser) {
+              chatMessageElement.appendChild(avatarElement)
+              chatMessageElement.appendChild(cardElement) // 添加样式，标识当前用户
+              chatContainer.appendChild(chatMessageElement)
             }
-            this.$axios.post('save_contact/', {
-              contacted_users: senderId
-            }).then(() => {
-              this.get_contacts()
-              this.contacts.unshift(newContact.id)
-              this.unreadContacts.push(0)
-            }).catch(error => {
-              console.error('保存联系人出错:', error)
-            })
-          }
-          // 创建聊天消息的容器元素
-          const chatMessageElement = document.createElement('div')
-          chatMessageElement.classList.add('chat-message')
-
-          // 创建头像元素
-          const avatarElement = document.createElement('el-avatar')
-          avatarElement.classList.add('chat-avatar')
-          avatarElement.setAttribute('size', 'small')
-          avatarElement.setAttribute('round', 'true')
-          avatarElement.innerText = message.sender_id
-
-          // 创建气泡消息元素
-
-          const cardElement = document.createElement('el-card')
-          cardElement.classList.add('chat-card')
-          cardElement.setAttribute('body-style', 'padding: 10px;')
-          cardElement.setAttribute('shadow', 'never')
-          cardElement.appendChild(document.createTextNode(message.content))
-          chatMessageElement.appendChild(cardElement)
-          const chatContainer = document.querySelector('.chat-container')
-          if (message.sender_id === this.contactUser) {
-            chatMessageElement.appendChild(avatarElement)
-            chatMessageElement.appendChild(cardElement) // 添加样式，标识当前用户
-            chatContainer.appendChild(chatMessageElement)
-          }
-          // 将头像和气泡消息元素添加到聊天消息容器中
-          // 将聊天消息容器添加到聊天容器中
-          // 接收到消息后滚动到底部
-          scrollToBottom(chatContainer)
+            // 将头像和气泡消息元素添加到聊天消息容器中
+            // 将聊天消息容器添加到聊天容器中
+            // 接收到消息后滚动到底部
+            scrollToBottom(chatContainer)
+          })
         } catch (error) {
           console.error('无效的 JSON 格式:', event.data)
         }
@@ -247,6 +270,17 @@ export default{
         console.log(this.contacts[index])
         if (response.status === 200) {
           const messages = response.data
+          console.log(messages)
+          const jse = new this.$jsEncrypt()
+          jse.setPrivateKey(this.privateKey)
+          messages.forEach(message => {
+            const encryptedContent = message.content
+            // 使用 RSA 解密算法对 encryptedContent 进行解密，得到 decryptedContent
+            const decryptedContent = jse.decrypt(encryptedContent)
+            console.log(decryptedContent)
+            // 直接修改消息对象的 content 字段为解密后的内容
+            message.content = decryptedContent
+          })
           this.messages = messages
         } else {
           console.error('Failed to fetch chat messages')
@@ -256,52 +290,61 @@ export default{
       }
     },
     sendMessage () {
-      let message = {
-        sender_id: this.user,
-        receiver_id: this.contactUser,
-        content: this.textarea
-      }
+      this.$axios.post('get_server_public_key/', {
+        username: this.contactUser
+      })
+        .then(response => {
+          this.publicKey = response.data.publicKey
+          console.log(this.publicKey)
+          const jse = new this.$jsEncrypt()
+          jse.setPublicKey(this.publicKey)
+          const encryptedData = jse.encrypt(this.textarea)
+          let message = {
+            sender_id: this.user,
+            receiver_id: this.contactUser,
+            content: encryptedData
+          }
 
-      const chatContainerElement = document.querySelector('.chat-container')
+          const chatContainerElement = document.querySelector('.chat-container')
+          // 创建聊天消息容器
+          const chatMessageElement = document.createElement('div')
+          chatMessageElement.classList.add('chat-message')
+          if (message.sender_id === this.user) {
+            chatMessageElement.classList.add('sender') // 添加发送者类名
+          } else {
+            chatMessageElement.classList.add('receiver') // 添加接收者类名
+          }
 
-      // 创建聊天消息容器
-      const chatMessageElement = document.createElement('div')
-      chatMessageElement.classList.add('chat-message')
-      if (message.sender_id === this.user) {
-        chatMessageElement.classList.add('sender') // 添加发送者类名
-      } else {
-        chatMessageElement.classList.add('receiver') // 添加接收者类名
-      }
+          // 创建头像元素
+          const avatarElement = document.createElement('el-avatar')
+          avatarElement.classList.add('chat-avatar')
+          avatarElement.setAttribute('size', 'small')
+          avatarElement.setAttribute('round', 'true')
+          avatarElement.innerText = message.sender_id
+          chatMessageElement.appendChild(avatarElement)
 
-      // 创建头像元素
-      const avatarElement = document.createElement('el-avatar')
-      avatarElement.classList.add('chat-avatar')
-      avatarElement.setAttribute('size', 'small')
-      avatarElement.setAttribute('round', 'true')
-      avatarElement.innerText = message.sender_id
-      chatMessageElement.appendChild(avatarElement)
+          // 创建文本消息元素
+          const cardElement = document.createElement('el-card')
+          cardElement.classList.add('chat-card')
+          cardElement.setAttribute('body-style', 'padding: 10px;')
+          cardElement.setAttribute('shadow', 'never')
+          cardElement.classList.add('sender')
+          cardElement.appendChild(document.createTextNode(this.textarea))
+          chatMessageElement.appendChild(cardElement)
 
-      // 创建文本消息元素
-      const cardElement = document.createElement('el-card')
-      cardElement.classList.add('chat-card')
-      cardElement.setAttribute('body-style', 'padding: 10px;')
-      cardElement.setAttribute('shadow', 'never')
-      cardElement.classList.add('sender')
-      cardElement.appendChild(document.createTextNode(message.content))
-      chatMessageElement.appendChild(cardElement)
+          chatContainerElement.appendChild(chatMessageElement)
 
-      chatContainerElement.appendChild(chatMessageElement)
+          function scrollToBottom () {
+            chatContainerElement.scrollTop = chatContainerElement.scrollHeight
+          }// 滚动到最底部
 
-      function scrollToBottom () {
-        chatContainerElement.scrollTop = chatContainerElement.scrollHeight
-      }// 滚动到最底部
-
-      scrollToBottom() // 发送消息后滚动到底部
-      this.websocket.send(JSON.stringify(message)) // 发送消息
-      this.textarea = ' ' // 清空输入框
+          scrollToBottom() // 发送消息后滚动到底部
+          this.websocket.send(JSON.stringify(message)) // 发送消息
+          this.textarea = ' ' // 清空输入框
+        })
     },
     get_contacts () {
-      this.$axios.get('/get_contacts')
+      this.$axios.get('get_contacts/')
         .then(response => {
           this.contacts = response.data.contacts // 将从后端获取的联系人列表存储在 data 中的 contacts 变量中
           console.log(this.contacts)
@@ -312,6 +355,18 @@ export default{
     },
     removeContact (index) {
       this.contacts.splice(index, 1) // 从联系人列表中移除指定索引的联系人
+    },
+    getAvatar () {
+      this.$axios.get('get_avatar/', {
+        responseType: 'arraybuffer' // 告诉 Axios 以二进制数组的形式接收响应
+      })
+        .then(response => {
+          const blob = new Blob([response.data], { type: 'image/png' })
+          const imageUrl = URL.createObjectURL(blob)
+          console.log(imageUrl)
+          this.avatar_url = imageUrl
+        })
+        .catch(error => console.error('Error fetching avatar:', error))
     }
   }
 }

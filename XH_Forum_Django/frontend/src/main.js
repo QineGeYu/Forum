@@ -5,6 +5,8 @@ import App from './App.vue'
 import router from './router/index'
 import VueRouter from 'vue-router'
 import axios from 'axios'
+import JSEncrypt from 'jsencrypt'
+Vue.prototype.$jsEncrypt = JSEncrypt
 Vue.use(ElementUI)
 Vue.use(VueRouter)
 Vue.config.productionTip = false

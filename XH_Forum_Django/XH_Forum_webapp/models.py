@@ -12,6 +12,8 @@ class Post(models.Model):
     likeCount = models.PositiveIntegerField(default=0)
     comments = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField('Tag')
+    is_private = models.BooleanField(default=False)
+    tag = models.TextField(default='影评')
 
     def __str__(self):
         #return self.title
@@ -63,3 +65,26 @@ class WebSocketConnection(models.Model):
 
     def __str__(self):
         return f"Receiver ID: {self.receiver_id}, Connection ID: {self.connection_id}"
+
+class UserPublicKey(models.Model):
+    user = models.CharField(max_length=255)
+    public_key = models.TextField()
+    private_key = models.TextField(default='DEFAULT_PRIVATE_KEY_VALUE')
+
+    def __str__(self):
+        return self.user
+
+class VerificationCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, to_field='username')
+    code = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"VerificationCode: {self.code} for {self.user.username}"
+    
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    
+    def username(self):
+        return self.user.username

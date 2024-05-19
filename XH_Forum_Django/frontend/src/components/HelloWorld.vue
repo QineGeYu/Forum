@@ -11,19 +11,14 @@
   <el-menu-item index="1">首页</el-menu-item>
   <el-submenu index="2">
     <template slot="title">板块分类</template>
-    <el-menu-item index="2-1">选项1</el-menu-item>
-    <el-menu-item index="2-2">选项2</el-menu-item>
-    <el-menu-item index="2-3">选项3</el-menu-item>
-    <el-submenu index="2-4">
-      <template slot="title">选项4</template>
-      <el-menu-item index="2-4-1">选项1</el-menu-item>
-      <el-menu-item index="2-4-2">选项2</el-menu-item>
-      <el-menu-item index="2-4-3">选项3</el-menu-item>
-    </el-submenu>
+    <el-menu-item index="2-1" @click="filterByTag('影评')">影评</el-menu-item>
+    <el-menu-item index="2-2" @click="filterByTag('旅游')">旅游</el-menu-item>
+    <el-menu-item index="2-3" @click="filterByTag('编程')">编程</el-menu-item>
+    <el-menu-item index="2-4" @click="filterByTag('其它')">其它</el-menu-item>
   </el-submenu>
   <el-menu-item index="3" @click="redirectToMessageCentre">消息中心</el-menu-item>
   <el-menu-item index="4" @click="redirectToUserPage"> 个人主页 </el-menu-item>
-  <el-avatar class="profile user pull-right" >{{ user }}</el-avatar>
+  <el-avatar class="profile user pull-right" :src="avatar_url">{{ user }}</el-avatar>
     <div class="search-container">
       <el-input
       v-model="searchText"
@@ -36,13 +31,20 @@
     </div>
 </el-menu>
 
+     <el-button class="floating-control" type="primary" round @click="toggleSort">
+      {{ sortText }}
+    </el-button>
+
 <div class="block">
   <el-timeline class="card-line">
     <el-timeline-item v-for="item in displayData" :key="item.id" :timestamp="item.created_at" placement="top">
       <el-card class="card">
-        <!-- <el-avatar class="profile author" @click="goToUserPage(item.author_id)"> {{ item.author_id }} </el-avatar> -->
           <div class="avatar-wrapper" @click="goToUserPage(item.author_id)">
-             <el-avatar class="profile author">{{ item.author_id }}</el-avatar>
+             <el-avatar class="profile author"
+             :src="item.avatarUrl"
+             >{{ item.author_id }}
+             </el-avatar>
+
           </div>
         <h4 class="card-title">标题:{{ item.title }}</h4>
         <p class="card-description">摘要:  {{ item.description }}</p>
@@ -56,6 +58,7 @@
             <span class="like-count">{{ item.comments }}</span>
             </el-button>
         </div>
+        <div class="tag-section">#{{ item.tag }}</div>
       </el-card>
     </el-timeline-item>
   </el-timeline>
@@ -72,13 +75,18 @@ export default{
       activeIndex: '1',
       activeIndex2: '1',
       searchText: '',
-      searchResults: []
+      sortText: '最新',
+      searchResults: [],
+      filteredPosts: [],
+      avatar_url: ''
     }
   },
   computed: {
     displayData () {
       if (this.searchText && this.searchResults.length > 0) {
         return this.searchResults
+      } else if (this.filteredPosts.length > 0) {
+        return this.filteredPosts
       } else {
         return this.cards
       }
@@ -92,10 +100,14 @@ export default{
     sessionStorage.setItem('user', JSON.stringify(this.user))
     console.log(this.user)
     this.getPost()
+    this.saveKey()
+    this.getAvatar()
   },
   methods: {
     handleSelect (key, keyPath) {
       console.log(key, keyPath)
+      this.searchResults = []
+      this.filteredPosts = []
     },
     likePost (item) {
       console.log(item.id)
@@ -117,6 +129,28 @@ export default{
       this.$axios.get('show_post/')
         .then(response => {
           this.cards = JSON.parse(response.data.posts)
+          if (this.sortText === '最新') {
+            this.cards.reverse()
+          } else {
+            this.cards.sort((a, b) => {
+              const hotnessA = a.likeCount + a.comments // 帖子A的热度
+              const hotnessB = b.likeCount + b.comments // 帖子B的热度
+              return hotnessB - hotnessA // 按热度排序，降序排列
+            })
+          }
+
+          Promise.all(this.cards.map(item => this.getOtherAvatar(item.author_id)))
+            .then(avatarUrls => {
+              // 将获取到的头像URL分别存储在帖子对象中
+              avatarUrls.forEach((avatarUrl, index) => {
+                this.cards[index].avatarUrl = avatarUrl
+              })
+              console.log(this.cards)
+            })
+            .catch(error => {
+              console.error('Error fetching avatars:', error)
+            })
+
           this.performSearch()
         })
         .catch(error => {
@@ -155,12 +189,64 @@ export default{
         .catch(error => {
           console.error('搜索失败:', error)
         })
+    },
+    async saveKey () {
+      const jse = new this.$jsEncrypt()
+      jse.getKey()
+      this.$axios.post('savePublicKey/', {
+        publicKey: jse.getPublicKey(),
+        privateKey: jse.getPrivateKey()
+      })
+        .then(response => {
+          // 请求成功后的处理逻辑
+          console.log(response.data)
+        })
+        .catch(error => {
+          // 请求失败后的处理逻辑
+          console.error(error)
+        })
+    },
+    filterByTag (tag) {
+      this.filteredPosts = this.cards.filter(post => {
+        return post.tag === tag
+      })
+      console.log(this.filteredPosts)
+    },
+    toggleSort () {
+      this.sortText = this.sortText === '最新' ? '最热' : '最新'
+    },
+    getOtherAvatar (username) {
+      return this.$axios.get(`/get_avatar2/${username}`, {
+        responseType: 'arraybuffer' // 告诉 Axios 以二进制数组的形式接收响应
+      })
+        .then(response => {
+          const blob = new Blob([response.data], { type: 'image/png' })
+          return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(blob)
+            resolve(url)
+          })
+        })
+        .catch(error => {
+          console.error('Error fetching avatar:', error)
+          return Promise.resolve('')
+        })
+    },
+    getAvatar () {
+      this.$axios.get('get_avatar/', {
+        responseType: 'arraybuffer' // 告诉 Axios 以二进制数组的形式接收响应
+      })
+        .then(response => {
+          const blob = new Blob([response.data], { type: 'image/png' })
+          const imageUrl = URL.createObjectURL(blob)
+          this.avatar_url = imageUrl
+        })
+        .catch(error => console.error('Error fetching avatar:', error))
     }
   }
 }
 </script>
 
-<style>
+<style scoped>
 @import url("//unpkg.com/element-ui@2.15.14/lib/theme-chalk/index.css");
 .el-menu-demo {
   display: flex;
@@ -213,5 +299,21 @@ export default{
 }
 .avatar-wrapper {
   cursor: pointer;
+}
+.floating-control {
+  position: fixed;
+  top: 70px; /* 距离顶部20px */
+  right: 70px; /* 距离右侧20px */
+  z-index: 999; /* 控件位于最顶层 */
+}
+.tag-section {
+  position: absolute;
+  bottom: 0px;
+  left: 30px;
+  background-color: #acebe9;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #333;
 }
 </style>

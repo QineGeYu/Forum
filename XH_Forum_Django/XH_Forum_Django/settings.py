@@ -21,13 +21,46 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-1zcx0vk7hbiisp$6=#bqeulc8984k28avvfieb+dcci#8%yoe('
-
+PRIVATE_KEY = '''-----BEGIN RSA PRIVATE KEY----- 
+MIIEqQIBAAKCAQEAgsoTAv9BcV+GZWZ5najqLE2CdirAdlAc1Bfrc9oxXFuwPBas
+GmuJrwFQHjkf+iduiZgySw+BMtmE4mJRuw4dv9PgW/q0VbdzMbd/B/J4Yk9vsl5h
+tNEEpYoRgY0j8sphbAwI44raRtLtHlt7pnya2D5qpf/z2pfqx4sarNDz+Rx6WTFy
+5sWviRJl2zcbIvBzOxKvn7I4M+O8UN5nGoJWQZhaP0NWc5c4zH77rYAJESwyB3c0
+jU0G7kT+gdjl1HtJEpKjkqFXHHxK8b3wcHBUY6aONC5mtOJkWt4sZmR01QE2yxC0
+CniJIVINE8DdNSrHpuyw01SDI0YQlf+oDWA3DQIDAQABAoIBAGWXRTE8yL6hrqkw
+8iKOxGbpRf83sgu0qs/sTI3O3CybY8co7UIQagAwCuWPBdGvs2LZf6diQb8Xyup1
+6Hpduqn4j/uiP1Wdi7MAj4HCy9PBVEe+nDJxcSSMnJB+6395yDa/GmB0yJve1ySP
+dvqZK0XxJbIPoIEZI0FKowbJyMUxVY4qTuvDaiPhBSF3t6Lxpivc30bjtut9otUa
+55zJvkroR12qP9k5JMj64w6OCY+fFUVhg7DcPPxRxuK64PuzaMDYr1BWeqmAcsiY
+mYaP3aO5hq0ry4u5SDayG82Wj+7E8DWezVbnjfgXQbAaCUgA0XUbwONzhNQnkshT
+P3blKRkCgYkAxguZt6oaJbyp/ATRLrawpx88EQiBT6hzZADp5Gt48Q0nkZCfjoQX
+Zf4Aei7l+lkldEWfbQ2i1p+rj7kSaCsI9QUbAHi7/OKJab7b9NlpAzXJr8JJyUSD
+V1R9vwa4pAX4HqMtQpulgqUwUuKXnpgvnsnLyYB43I0QA7NbV00fyls0jEhk42K9
+qwJ5AKkQDK38oR3kWs+JTkaG3He0Yp95mc5BKvc+IaSuFw2/fhVF4ETlwK+aKyYi
+napOO1CrRRnH3d7oxjgGSoYgkZIT0vqLRRxyhHHLYzWoGA7nKUev4EuIavyNWea0
+yaukgyjjdujKw5mThUQQyLJy7a38O7ug5Dn2JwKBiQC+L3W3AwuJIdy7wISBr7+F
+PmGYmepUbRgi+R2j1fGWy2MsTw5q9j7iG0KqE0+XUvS86/9l4qp2IW/H3ZrnnixD
+4FtF4Kvm9kWv3zGruP03r/e3aYUiW0EmJGV9hR7bpT/ZbCqSxJX1GF2Hu0KPcuaI
+PpINN+rZIj42z47wD4hv85ZLAVqhYrlxAnhmjdjTNhtaMaqwmD8GY0qbxq3IxY/6
+YOe6YVMxPXW4nj/Skbews5pGK4QfNwJjS9+JWMurDuXVEWkklRRh9qG3dhUWbKM4
+1XLoQJNm+hfV+n29AcBSsWcM2oX9gA+R8lKp3AnGvzEWGTnPB0tnjHYHg6mMcNXh
+HyMCgYg/S/mSOOuRVgO+I6iUE9IRXP7mMyPfCBT0xuQhDSQFSEguAGO++Ep2EOVi
++YaeqOhcQXMJm5t9eC4xuxCzVwoQ/pLrVFEgRlhHDLJ9m5b5IkH2/l6WouFtg6NN
+7FFOL7NEbSqgQelLqcFOJvcCKGBkem5Yzi4qAHfXd6zoLASaR2L+6W/GH3oc 
+-----END RSA PRIVATE KEY-----'''
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
+# 邮箱配置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.qq.com'  # 腾讯QQ邮箱 SMTP 服务器地址
+EMAIL_PORT = 25  # SMTP服务的端口号
+EMAIL_HOST_USER = '2928476510@qq.com'  # 发送邮件的QQ邮箱
+EMAIL_HOST_PASSWORD = 'jnhxvhhtffjndedh'
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
 # Application definition
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
@@ -135,7 +168,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
